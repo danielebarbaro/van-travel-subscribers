@@ -9,10 +9,27 @@ export default function Home() {
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [subscriberCount, setSubscriberCount] = useState(0);
+  const [cooldownTime, setCooldownTime] = useState<number | null>(null);
+  const [rateLimitInfo, setRateLimitInfo] = useState<{
+    remaining: number;
+    resetTime?: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchSubscriberCount();
   }, []);
+
+  useEffect(() => {
+    if (cooldownTime && cooldownTime > Date.now()) {
+      const timer = setInterval(() => {
+        if (Date.now() >= cooldownTime) {
+          setCooldownTime(null);
+          clearInterval(timer);
+        }
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [cooldownTime]);
 
   const fetchSubscriberCount = async () => {
     try {
@@ -26,6 +43,13 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (cooldownTime && Date.now() < cooldownTime) {
+      const secondsLeft = Math.ceil((cooldownTime - Date.now()) / 1000);
+      setMessage(`⏱️ Attendi ${secondsLeft} secondi prima di riprovare`);
+      setIsSuccess(false);
+      return;
+    }
+
     setIsLoading(true);
     setMessage('');
 
@@ -39,23 +63,48 @@ export default function Home() {
       });
 
       const data = await response.json();
+      const remaining = response.headers.get('X-RateLimit-Remaining');
+      const resetTime = response.headers.get('X-RateLimit-Reset');
+      
+      if (remaining !== null) {
+        setRateLimitInfo({
+          remaining: parseInt(remaining),
+          resetTime: resetTime ? new Date(parseInt(resetTime) * 1000).toLocaleTimeString('it-IT') : undefined
+        });
+      }
 
-      if (response.ok) {
+      if (response.status === 429) {
+        // Rate limit exceeded
+        const minutesUntilReset = data.minutesUntilReset || 15;
+        setMessage(`🚫 Troppe richieste. Riprova tra ${minutesUntilReset} minuti.`);
+        setIsSuccess(false);
+        setCooldownTime(Date.now() + (minutesUntilReset * 60 * 1000));
+      } else if (response.ok) {
         setMessage('🎉 Perfetto! Ti avviseremo appena disponibili!');
         setIsSuccess(true);
         setEmail('');
         fetchSubscriberCount();
+        setCooldownTime(Date.now() + 30000);
       } else {
         setMessage(data.error || 'Si è verificato un errore');
         setIsSuccess(false);
+        setCooldownTime(Date.now() + 10000);
       }
     } catch {
       setMessage('Errore di connessione. Riprova più tardi.');
       setIsSuccess(false);
+      setCooldownTime(Date.now() + 15000);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const getCooldownSeconds = () => {
+    if (!cooldownTime) return 0;
+    return Math.max(0, Math.ceil((cooldownTime - Date.now()) / 1000));
+  };
+
+  const isDisabled = isLoading || (cooldownTime && Date.now() < cooldownTime);
 
   return (
     <div className="min-h-screen flex">
@@ -75,7 +124,6 @@ export default function Home() {
             </div>
           </div>
 
-
           {/* Main Heading */}
           <h1 className="text-5xl lg:text-6xl font-bold text-black mb-6 leading-tight font-sedgwick">
             BarbiSurfer <br /> <span  className="text-3xl lg:text-4xl">Viaggi in Camper gentilmente hackerati</span>
@@ -94,8 +142,8 @@ export default function Home() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nome@dominio.com"
-                className="flex-1 px-4 py-3 border-0 focus:outline-none text-base bg-white font-roboto"
-                disabled={isLoading}
+                className="flex-1 px-4 py-3 border-0 focus:outline-none text-base bg-white font-roboto disabled:bg-gray-50 disabled:text-gray-500"
+                disabled={Boolean(isDisabled)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleSubmit(e as React.KeyboardEvent<HTMLInputElement>);
@@ -104,10 +152,12 @@ export default function Home() {
               />
               <button
                 onClick={handleSubmit}
-                disabled={isLoading}
+                disabled={Boolean(isDisabled)}
                 className="px-6 py-3 bg-black text-white font-medium hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-roboto"
               >
-                {isLoading ? 'Invio...' : 'Iscriviti ora'}
+                {isLoading ? 'Invio...' : 
+                 cooldownTime && Date.now() < cooldownTime ? `${getCooldownSeconds()}s` :
+                 'Iscriviti ora'}
               </button>
             </div>
 
@@ -117,6 +167,12 @@ export default function Home() {
                 {message}
               </p>
             )}
+             {process.env.NODE_ENV === 'development' && rateLimitInfo ? (
+               <p className="mt-2 text-xs text-gray-500 font-roboto">
+                 Debug: {rateLimitInfo.remaining} richieste rimanenti
+                 {rateLimitInfo.resetTime ? ` (reset: ${rateLimitInfo.resetTime})` : ''}
+               </p>
+             ) : null}
           </div>
 
           {/* Social Proof */}
