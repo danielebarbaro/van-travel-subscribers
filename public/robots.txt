@@ -1,0 +1,12 @@
+User-agent: *
+Disallow: /
+
+# Blocca specificamente Google
+User-agent: Googlebot
+Disallow: /
+
+User-agent: Bingbot
+Disallow: /
+
+User-agent: Slurp
+Disallow: / 

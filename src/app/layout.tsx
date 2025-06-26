@@ -21,6 +21,19 @@ export const metadata: Metadata = {
   description: "Scopri l'Italia e l'Europa con i nostri viaggi in camper di una settimana a soli 99€. Itinerari curati, avventure indimenticabili. Registrati per essere tra i primi!",
   keywords: "camper, viaggi, italia, europa, vacanze, avventura, itinerari, 99 euro, barbisurfer",
   authors: [{ name: "BarbiSurfer" }],
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'none',
+      'max-snippet': -1,
+    },
+  },
   openGraph: {
     title: "BarbiSurfer - Viaggi in Camper a 99€",
     description: "Viaggi in camper di una settimana a soli 99€. Scopri l'Italia e l'Europa!",
