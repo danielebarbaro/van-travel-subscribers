@@ -1,26 +1,43 @@
-import Database from 'better-sqlite3';
-import path from 'path';
+import { createClient } from '@libsql/client';
 
-const dbPath = path.join(process.cwd(), 'data', 'emails.db');
-const db = new Database(dbPath);
+const turso = createClient({
+  url: process.env.TURSO_DATABASE_URL!,
+  authToken: process.env.TURSO_AUTH_TOKEN!,
+});
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS emails (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    deleted_at DATETIME NULL
-  )
-`);
+let isInitialized = false;
 
-try {
-  db.exec(`ALTER TABLE emails ADD COLUMN deleted_at DATETIME NULL`);
-} catch (error: unknown) {
-  const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
-  if (!errorMessage.includes('duplicate column name')) {
-    console.warn('Avviso durante aggiornamento schema:', errorMessage);
+async function initializeDatabase() {
+  if (isInitialized) return;
+
+  try {
+    await turso.execute(`
+      CREATE TABLE IF NOT EXISTS emails (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        deleted_at DATETIME NULL
+      )
+    `);
+
+    const tableInfo = await turso.execute("PRAGMA table_info(emails)");
+    const hasDeletedAt = tableInfo.rows.some((row) => {
+      const rowData = row as Record<string, unknown>;
+      return rowData.name === 'deleted_at';
+    });
+
+    if (!hasDeletedAt) {
+      await turso.execute(`ALTER TABLE emails ADD COLUMN deleted_at DATETIME NULL`);
+    }
+
+    isInitialized = true;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+    console.warn('Avviso durante inizializzazione database:', errorMessage);
   }
 }
+
+initializeDatabase().catch(console.error);
 
 export interface EmailEntry {
   id?: number;
@@ -30,61 +47,86 @@ export interface EmailEntry {
 }
 
 export class EmailDatabase {
-  private insertEmail = db.prepare('INSERT INTO emails (email) VALUES (?)');
-  private getAllEmails = db.prepare('SELECT * FROM emails WHERE deleted_at IS NULL ORDER BY created_at DESC');
-  private getEmailCount = db.prepare('SELECT COUNT(*) as count FROM emails WHERE deleted_at IS NULL');
-  private getAllEmailsIncludingDeleted = db.prepare('SELECT * FROM emails ORDER BY created_at DESC');
-  private softDeleteEmail = db.prepare('UPDATE emails SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL');
-  private restoreEmail = db.prepare('UPDATE emails SET deleted_at = NULL WHERE id = ?');
-  private getEmailById = db.prepare('SELECT * FROM emails WHERE id = ?');
+  private async ensureInitialized() {
+    if (!isInitialized) {
+      await initializeDatabase();
+    }
+  }
 
-  addEmail(email: string): void {
+  async addEmail(email: string): Promise<void> {
+    await this.ensureInitialized();
     try {
-      this.insertEmail.run(email);
+      await turso.execute({
+        sql: 'INSERT INTO emails (email) VALUES (?)',
+        args: [email]
+      });
     } catch (error: unknown) {
-      if (error instanceof Error && 'code' in error && (error as { code: string }).code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
         throw new Error('Email già registrata');
       }
       throw error;
     }
   }
 
-  getEmails(): EmailEntry[] {
-    return this.getAllEmails.all() as EmailEntry[];
+  async getEmails(): Promise<EmailEntry[]> {
+    await this.ensureInitialized();
+    const result = await turso.execute('SELECT * FROM emails WHERE deleted_at IS NULL ORDER BY created_at DESC');
+    return result.rows as unknown as EmailEntry[];
   }
 
-  getCount(): number {
-    const result = this.getEmailCount.get() as { count: number };
-    return result.count;
+  async getCount(): Promise<number> {
+    await this.ensureInitialized();
+    const result = await turso.execute('SELECT COUNT(*) as count FROM emails WHERE deleted_at IS NULL');
+    return (result.rows[0] as unknown as { count: number }).count;
   }
 
-  getEmailsIncludingDeleted(): EmailEntry[] {
-    return this.getAllEmailsIncludingDeleted.all() as EmailEntry[];
+  async getEmailsIncludingDeleted(): Promise<EmailEntry[]> {
+    await this.ensureInitialized();
+    const result = await turso.execute('SELECT * FROM emails ORDER BY created_at DESC');
+    return result.rows as unknown as EmailEntry[];
   }
 
-  deleteEmail(id: number): boolean {
-    const result = this.softDeleteEmail.run(id);
-    return result.changes > 0;
+  async deleteEmail(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: 'UPDATE emails SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL',
+      args: [id]
+    });
+    return result.rowsAffected > 0;
   }
 
-  restoreEmail(id: number): boolean {
-    const result = this.restoreEmail.run(id);
-    return result.changes > 0;
+  async restoreEmail(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: 'UPDATE emails SET deleted_at = NULL WHERE id = ?',
+      args: [id]
+    });
+    return result.rowsAffected > 0;
   }
 
-  getEmailById(id: number): EmailEntry | null {
-    const result = this.getEmailById.get(id) as EmailEntry | undefined;
-    return result || null;
+  async getEmailById(id: number): Promise<EmailEntry | null> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: 'SELECT * FROM emails WHERE id = ?',
+      args: [id]
+    });
+    return result.rows.length > 0 ? (result.rows[0] as unknown as EmailEntry) : null;
   }
 
-  getStats(): { active: number; deleted: number; total: number } {
-    const activeCount = this.getEmailCount.get() as { count: number };
-    const totalCount = db.prepare('SELECT COUNT(*) as count FROM emails').get() as { count: number };
+  async getStats(): Promise<{ active: number; deleted: number; total: number }> {
+    await this.ensureInitialized();
+    const [activeResult, totalResult] = await Promise.all([
+      turso.execute('SELECT COUNT(*) as count FROM emails WHERE deleted_at IS NULL'),
+      turso.execute('SELECT COUNT(*) as count FROM emails')
+    ]);
+
+    const activeCount = (activeResult.rows[0] as unknown as { count: number }).count;
+    const totalCount = (totalResult.rows[0] as unknown as { count: number }).count;
 
     return {
-      active: activeCount.count,
-      deleted: totalCount.count - activeCount.count,
-      total: totalCount.count
+      active: activeCount,
+      deleted: totalCount - activeCount,
+      total: totalCount
     };
   }
 }

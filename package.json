@@ -1,19 +1,16 @@
 {
-  "name": "front-landing",
-  "version": "0.1.0",
+  "name": "van-travel-subscribers",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test-db": "node scripts/test-db.js",
-    "view-emails": "node scripts/view-emails.js",
     "generate-token": "node scripts/generate-token.js"
   },
   "dependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "better-sqlite3": "^12.1.1",
+    "@libsql/client": "^0.15.9",
     "next": "15.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

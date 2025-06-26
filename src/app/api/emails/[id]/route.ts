@@ -5,10 +5,11 @@ import { validateAdminToken, createAuthErrorResponse } from '@/lib/auth';
 // GET /api/emails/[id] - Recupera una singola email (pubblico)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     
     if (isNaN(id)) {
       return NextResponse.json(
@@ -17,7 +18,7 @@ export async function GET(
       );
     }
 
-    const email = emailDatabase.getEmailById(id);
+    const email = await emailDatabase.getEmailById(id);
     
     if (!email) {
       return NextResponse.json(
@@ -27,7 +28,7 @@ export async function GET(
     }
 
     return NextResponse.json(email);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Errore nel recuperare l\'email:', error);
     return NextResponse.json(
       { error: 'Errore interno del server' },
@@ -39,7 +40,7 @@ export async function GET(
 // DELETE /api/emails/[id] - Soft delete di una email (PROTETTO)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   // Verifica autenticazione
   const authResult = validateAdminToken(request);
@@ -48,7 +49,8 @@ export async function DELETE(
   }
 
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     
     if (isNaN(id)) {
       return NextResponse.json(
@@ -57,7 +59,7 @@ export async function DELETE(
       );
     }
 
-    const success = emailDatabase.deleteEmail(id);
+    const success = await emailDatabase.deleteEmail(id);
     
     if (!success) {
       return NextResponse.json(
@@ -72,7 +74,7 @@ export async function DELETE(
       { message: 'Email cancellata con successo' },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Errore nel cancellare l\'email:', error);
     return NextResponse.json(
       { error: 'Errore interno del server' },
@@ -84,7 +86,7 @@ export async function DELETE(
 // PATCH /api/emails/[id] - Ripristina una email cancellata (PROTETTO)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   // Verifica autenticazione
   const authResult = validateAdminToken(request);
@@ -93,7 +95,8 @@ export async function PATCH(
   }
 
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     
     if (isNaN(id)) {
       return NextResponse.json(
@@ -106,7 +109,7 @@ export async function PATCH(
     const { action } = body;
 
     if (action === 'restore') {
-      const success = emailDatabase.restoreEmail(id);
+      const success = await emailDatabase.restoreEmail(id);
       
       if (!success) {
         return NextResponse.json(
@@ -127,7 +130,7 @@ export async function PATCH(
         { status: 400 }
       );
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Errore nel ripristinare l\'email:', error);
     return NextResponse.json(
       { error: 'Errore interno del server' },

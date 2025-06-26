@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    emailDatabase.addEmail(email.toLowerCase().trim());
+    await emailDatabase.addEmail(email.toLowerCase().trim());
 
     return NextResponse.json(
       { message: 'Email salvata con successo!' },
@@ -62,15 +62,15 @@ export async function GET(request: NextRequest) {
 
     if (statsOnly) {
       // Restituisci solo le statistiche (PROTETTO)
-      const stats = emailDatabase.getStats();
+      const stats = await emailDatabase.getStats();
       console.log('🛡️  ADMIN ACTION: Stats requested');
       return NextResponse.json(stats);
     }
 
     if (includeDeleted) {
       // Restituisci tutte le email incluse quelle cancellate (PROTETTO)
-      const emails = emailDatabase.getEmailsIncludingDeleted();
-      const stats = emailDatabase.getStats();
+      const emails = await emailDatabase.getEmailsIncludingDeleted();
+      const stats = await emailDatabase.getStats();
       console.log('🛡️  ADMIN ACTION: All emails (including deleted) requested');
       return NextResponse.json({
         emails,
@@ -78,10 +78,10 @@ export async function GET(request: NextRequest) {
       });
     } else {
       // Comportamento originale - solo conteggio email attive (PUBBLICO)
-      const count = emailDatabase.getCount();
+      const count = await emailDatabase.getCount();
       return NextResponse.json({ count });
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Errore nel recuperare i dati:', error);
     return NextResponse.json(
       { error: 'Errore interno del server' },
