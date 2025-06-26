@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 
 export default function Home() {
   const [email, setEmail] = useState('');
@@ -14,6 +15,8 @@ export default function Home() {
     remaining: number;
     resetTime?: string;
   } | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   useEffect(() => {
     fetchSubscriberCount();
@@ -41,11 +44,26 @@ export default function Home() {
     }
   };
 
+  const resetCaptcha = () => {
+    setTurnstileToken(null);
+    if (turnstileRef.current) {
+      turnstileRef.current.reset();
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (cooldownTime && Date.now() < cooldownTime) {
       const secondsLeft = Math.ceil((cooldownTime - Date.now()) / 1000);
       setMessage(`⏱️ Attendi ${secondsLeft} secondi prima di riprovare`);
+      setIsSuccess(false);
+      return;
+    }
+
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    if (siteKey && !turnstileToken) {
+      setMessage('🤖 Completa la verifica di sicurezza');
       setIsSuccess(false);
       return;
     }
@@ -59,10 +77,14 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ 
+          email,
+          turnstileToken: turnstileToken 
+        }),
       });
 
       const data = await response.json();
+      
       const remaining = response.headers.get('X-RateLimit-Remaining');
       const resetTime = response.headers.get('X-RateLimit-Reset');
       
@@ -74,26 +96,29 @@ export default function Home() {
       }
 
       if (response.status === 429) {
-        // Rate limit exceeded
         const minutesUntilReset = data.minutesUntilReset || 15;
         setMessage(`🚫 Troppe richieste. Riprova tra ${minutesUntilReset} minuti.`);
         setIsSuccess(false);
         setCooldownTime(Date.now() + (minutesUntilReset * 60 * 1000));
+        resetCaptcha();
       } else if (response.ok) {
         setMessage('🎉 Perfetto! Ti avviseremo appena disponibili!');
         setIsSuccess(true);
         setEmail('');
         fetchSubscriberCount();
         setCooldownTime(Date.now() + 30000);
+        resetCaptcha();
       } else {
         setMessage(data.error || 'Si è verificato un errore');
         setIsSuccess(false);
         setCooldownTime(Date.now() + 10000);
+        resetCaptcha();
       }
     } catch {
       setMessage('Errore di connessione. Riprova più tardi.');
       setIsSuccess(false);
       setCooldownTime(Date.now() + 15000);
+      resetCaptcha();
     } finally {
       setIsLoading(false);
     }
@@ -105,6 +130,7 @@ export default function Home() {
   };
 
   const isDisabled = isLoading || (cooldownTime && Date.now() < cooldownTime);
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   return (
     <div className="min-h-screen flex">
@@ -160,6 +186,23 @@ export default function Home() {
                  'Iscriviti ora'}
               </button>
             </div>
+
+            {/* Turnstile CAPTCHA */}
+            {siteKey && (
+              <div className="mt-4 flex justify-center">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={siteKey}
+                  onSuccess={setTurnstileToken}
+                  onError={() => setTurnstileToken(null)}
+                  onExpire={() => setTurnstileToken(null)}
+                  options={{
+                    theme: 'light',
+                    size: 'normal',
+                  }}
+                />
+              </div>
+            )}
 
             {/* Message */}
             {message && (

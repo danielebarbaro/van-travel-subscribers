@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { emailDatabase } from '@/lib/database';
 import { validateAdminToken, createAuthErrorResponse } from '@/lib/auth';
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limiter';
+import { verifyTurnstileToken } from '@/lib/turnstile';
 
 function getClientIP(request: NextRequest): string {
   const forwardedFor = request.headers.get('x-forwarded-for');
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { email } = body;
+    const { email, turnstileToken } = body;
 
     if (!email) {
       return NextResponse.json(
@@ -61,6 +62,28 @@ export async function POST(request: NextRequest) {
     if (!emailRegex.test(email)) {
       return NextResponse.json(
         { error: 'Email non valida' },
+        { 
+          status: 400,
+          headers: getRateLimitHeaders(rateLimitResult)
+        }
+      );
+    }
+
+    if (turnstileToken) {
+      const isValidCaptcha = await verifyTurnstileToken(turnstileToken, clientIP);
+      if (!isValidCaptcha) {
+        return NextResponse.json(
+          { error: 'Verifica di sicurezza fallita. Riprova.' },
+          { 
+            status: 400,
+            headers: getRateLimitHeaders(rateLimitResult)
+          }
+        );
+      }
+    } else if (process.env.TURNSTILE_SECRET_KEY) {
+      // Se Turnstile è configurato ma il token non è fornito
+      return NextResponse.json(
+        { error: 'Verifica di sicurezza richiesta' },
         { 
           status: 400,
           headers: getRateLimitHeaders(rateLimitResult)
