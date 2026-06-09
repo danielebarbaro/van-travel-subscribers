@@ -1,4 +1,5 @@
 import { createClient } from '@libsql/client';
+import { randomBytes } from 'crypto';
 
 const turso = createClient({
   url: process.env.TURSO_DATABASE_URL!,
@@ -30,6 +31,24 @@ async function initializeDatabase() {
       await turso.execute(`ALTER TABLE emails ADD COLUMN deleted_at DATETIME NULL`);
     }
 
+    const hasUnsubscribeToken = tableInfo.rows.some((row) => {
+      const rowData = row as Record<string, unknown>;
+      return rowData.name === 'unsubscribe_token';
+    });
+
+    if (!hasUnsubscribeToken) {
+      await turso.execute(`ALTER TABLE emails ADD COLUMN unsubscribe_token TEXT`);
+    }
+
+    await turso.execute(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_emails_unsub_token ON emails(unsubscribe_token)`
+    );
+
+    // Backfill: assegna un token casuale alle righe esistenti che ne sono prive
+    await turso.execute(
+      `UPDATE emails SET unsubscribe_token = lower(hex(randomblob(16))) WHERE unsubscribe_token IS NULL`
+    );
+
     isInitialized = true;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
@@ -44,6 +63,7 @@ export interface EmailEntry {
   email: string;
   created_at?: string;
   deleted_at?: string | null;
+  unsubscribe_token?: string | null;
 }
 
 export class EmailDatabase {
@@ -56,9 +76,10 @@ export class EmailDatabase {
   async addEmail(email: string): Promise<void> {
     await this.ensureInitialized();
     try {
+      const unsubscribeToken = randomBytes(16).toString('hex');
       await turso.execute({
-        sql: 'INSERT INTO emails (email) VALUES (?)',
-        args: [email]
+        sql: 'INSERT INTO emails (email, unsubscribe_token) VALUES (?, ?)',
+        args: [email, unsubscribeToken]
       });
     } catch (error: unknown) {
       if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
@@ -111,6 +132,24 @@ export class EmailDatabase {
       args: [id]
     });
     return result.rows.length > 0 ? (result.rows[0] as unknown as EmailEntry) : null;
+  }
+
+  async getByToken(token: string): Promise<EmailEntry | null> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: 'SELECT * FROM emails WHERE unsubscribe_token = ?',
+      args: [token]
+    });
+    return result.rows.length > 0 ? (result.rows[0] as unknown as EmailEntry) : null;
+  }
+
+  async unsubscribeByToken(token: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: 'UPDATE emails SET deleted_at = CURRENT_TIMESTAMP WHERE unsubscribe_token = ? AND deleted_at IS NULL',
+      args: [token]
+    });
+    return result.rowsAffected > 0;
   }
 
   async getStats(): Promise<{ active: number; deleted: number; total: number }> {
