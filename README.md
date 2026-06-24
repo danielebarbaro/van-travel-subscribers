@@ -1,6 +1,6 @@
 # 🚐 BarbiSurfer - Landing Page
 
-Una landing page semplice e moderna per raccogliere email di potenziali clienti interessati a viaggi in camper di una settimana a 99€.
+Una landing page semplice e moderna per raccogliere email di potenziali clienti interessati a viaggi in camper di una settimana a 129€.
 
 ## ✨ Caratteristiche
 

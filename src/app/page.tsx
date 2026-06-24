@@ -160,7 +160,7 @@ export default function Home() {
 
           {/* Subtitle */}
           <p className="text-lg text-gray-600 mb-8 leading-relaxed font-roboto">
-            Scopri l&apos;Italia e l&apos;Europa con i nostri viaggi in camper di una settimana a soli 99€.
+            Scopri l&apos;Italia e l&apos;Europa con i nostri viaggi in camper di una settimana a soli 129€.
           </p>
 
           {/* Email Form */}

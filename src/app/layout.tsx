@@ -18,9 +18,9 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "BarbiSurfer - Viaggi in Camper a 99€ | Una Settimana di Avventura",
-  description: "Scopri l'Italia e l'Europa con i nostri viaggi in camper di una settimana a soli 99€. Itinerari curati, avventure indimenticabili. Registrati per essere tra i primi!",
-  keywords: "camper, viaggi, italia, europa, vacanze, avventura, itinerari, 99 euro, barbisurfer",
+  title: "BarbiSurfer - Viaggi in Camper a 129€ | Una Settimana di Avventura",
+  description: "Scopri l'Italia e l'Europa con i nostri viaggi in camper di una settimana a soli 129€. Itinerari curati, avventure indimenticabili. Registrati per essere tra i primi!",
+  keywords: "camper, viaggi, italia, europa, vacanze, avventura, itinerari, 129 euro, barbisurfer",
   authors: [{ name: "BarbiSurfer" }],
   robots: {
     index: false,
@@ -36,8 +36,8 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "BarbiSurfer - Viaggi in Camper a 99€",
-    description: "Viaggi in camper di una settimana a soli 99€. Scopri l'Italia e l'Europa!",
+    title: "BarbiSurfer - Viaggi in Camper a 129€",
+    description: "Viaggi in camper di una settimana a soli 129€. Scopri l'Italia e l'Europa!",
     type: "website",
   },
 };
