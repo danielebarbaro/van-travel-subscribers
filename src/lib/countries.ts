@@ -1,16 +1,22 @@
-// Lowercase country keys matching the backend station country values.
+// Lowercase country keys matching the backend station country values
+// (Station->country = city.countryName, lowercased). Derived from the live
+// Roadsurfer Rally stations API (departure + arrival), not hand-picked.
 export const countries = [
-  'italy',
-  'france',
-  'spain',
-  'germany',
   'austria',
-  'switzerland',
-  'netherlands',
   'belgium',
+  'canada',
+  'france',
+  'germany',
+  'ireland',
+  'italy',
+  'netherlands',
+  'norway',
   'portugal',
-  'croatia',
-  'slovenia',
+  'spain',
+  'sweden',
+  'switzerland',
+  'united kingdom',
+  'united states of america',
 ] as const;
 
 export type Country = (typeof countries)[number];
