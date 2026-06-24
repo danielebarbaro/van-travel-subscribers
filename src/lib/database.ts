@@ -30,11 +30,15 @@ async function initializeDatabase() {
       await turso.execute(`ALTER TABLE emails ADD COLUMN deleted_at DATETIME NULL`);
     }
 
+    const columnsInfo = await turso.execute('PRAGMA table_info(emails)');
+    const existingColumns = new Set(
+      columnsInfo.rows.map((row) => (row as Record<string, unknown>).name as string)
+    );
+
     const ensureColumn = async (name: string, ddl: string) => {
-      const info = await turso.execute('PRAGMA table_info(emails)');
-      const exists = info.rows.some((row) => (row as Record<string, unknown>).name === name);
-      if (!exists) {
+      if (!existingColumns.has(name)) {
         await turso.execute(`ALTER TABLE emails ADD COLUMN ${ddl}`);
+        existingColumns.add(name);
       }
     };
 
@@ -46,6 +50,8 @@ async function initializeDatabase() {
     await ensureColumn('custom_max_km', 'custom_max_km INTEGER');
     await ensureColumn('custom_date_from', 'custom_date_from TEXT');
     await ensureColumn('custom_date_to', 'custom_date_to TEXT');
+    // Opaque server-side token for the unsubscribe flow; intentionally NOT part of
+    // SubscriberPreferences (fetched separately), so its absence there is not a bug.
     await ensureColumn('unsubscribe_token', 'unsubscribe_token TEXT');
 
     isInitialized = true;
