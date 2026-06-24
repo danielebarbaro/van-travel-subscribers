@@ -30,6 +30,24 @@ async function initializeDatabase() {
       await turso.execute(`ALTER TABLE emails ADD COLUMN deleted_at DATETIME NULL`);
     }
 
+    const ensureColumn = async (name: string, ddl: string) => {
+      const info = await turso.execute('PRAGMA table_info(emails)');
+      const exists = info.rows.some((row) => (row as Record<string, unknown>).name === name);
+      if (!exists) {
+        await turso.execute(`ALTER TABLE emails ADD COLUMN ${ddl}`);
+      }
+    };
+
+    await ensureColumn('sub_daily_trips', 'sub_daily_trips INTEGER NOT NULL DEFAULT 1');
+    await ensureColumn('sub_daily_itineraries', 'sub_daily_itineraries INTEGER NOT NULL DEFAULT 1');
+    await ensureColumn('sub_custom_trip', 'sub_custom_trip INTEGER NOT NULL DEFAULT 0');
+    await ensureColumn('custom_country', 'custom_country TEXT');
+    await ensureColumn('custom_direction', 'custom_direction TEXT');
+    await ensureColumn('custom_max_km', 'custom_max_km INTEGER');
+    await ensureColumn('custom_date_from', 'custom_date_from TEXT');
+    await ensureColumn('custom_date_to', 'custom_date_to TEXT');
+    await ensureColumn('unsubscribe_token', 'unsubscribe_token TEXT');
+
     isInitialized = true;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
@@ -44,6 +62,17 @@ export interface EmailEntry {
   email: string;
   created_at?: string;
   deleted_at?: string | null;
+}
+
+export interface SubscriberPreferences {
+  sub_daily_trips: number;
+  sub_daily_itineraries: number;
+  sub_custom_trip: number;
+  custom_country: string | null;
+  custom_direction: string | null;
+  custom_max_km: number | null;
+  custom_date_from: string | null;
+  custom_date_to: string | null;
 }
 
 export class EmailDatabase {
@@ -111,6 +140,61 @@ export class EmailDatabase {
       args: [id]
     });
     return result.rows.length > 0 ? (result.rows[0] as unknown as EmailEntry) : null;
+  }
+
+  async getPreferences(email: string): Promise<SubscriberPreferences | null> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: `SELECT sub_daily_trips, sub_daily_itineraries, sub_custom_trip,
+                   custom_country, custom_direction, custom_max_km,
+                   custom_date_from, custom_date_to
+            FROM emails WHERE email = ? AND deleted_at IS NULL`,
+      args: [email],
+    });
+    return result.rows.length > 0
+      ? (result.rows[0] as unknown as SubscriberPreferences)
+      : null;
+  }
+
+  async updatePreferences(email: string, prefs: SubscriberPreferences): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: `UPDATE emails SET
+              sub_daily_trips = ?, sub_daily_itineraries = ?, sub_custom_trip = ?,
+              custom_country = ?, custom_direction = ?, custom_max_km = ?,
+              custom_date_from = ?, custom_date_to = ?
+            WHERE email = ? AND deleted_at IS NULL`,
+      args: [
+        prefs.sub_daily_trips,
+        prefs.sub_daily_itineraries,
+        prefs.sub_custom_trip,
+        prefs.custom_country,
+        prefs.custom_direction,
+        prefs.custom_max_km,
+        prefs.custom_date_from,
+        prefs.custom_date_to,
+        email,
+      ],
+    });
+    return result.rowsAffected > 0;
+  }
+
+  async softDeleteByEmail(email: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: 'UPDATE emails SET deleted_at = CURRENT_TIMESTAMP WHERE email = ? AND deleted_at IS NULL',
+      args: [email],
+    });
+    return result.rowsAffected > 0;
+  }
+
+  async isActiveSubscriber(email: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: 'SELECT 1 FROM emails WHERE email = ? AND deleted_at IS NULL LIMIT 1',
+      args: [email],
+    });
+    return result.rows.length > 0;
   }
 
   async getStats(): Promise<{ active: number; deleted: number; total: number }> {
