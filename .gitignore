@@ -42,3 +42,6 @@ next-env.d.ts
 
 # database
 data/*.db
+
+# local-only deploy runbook (not for public repo)
+GOLIVE-DASHBOARD.md

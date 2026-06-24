@@ -22,6 +22,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   pages: {
     signIn: '/login',
+    verifyRequest: '/verify-request',
+    error: '/auth-error',
   },
   callbacks: {
     // Allow login ONLY for emails already subscribed (not soft-deleted).
