@@ -10,9 +10,12 @@
     "generate-token": "node scripts/generate-token.js"
   },
   "dependencies": {
+    "@auth/drizzle-adapter": "^1.11.2",
     "@libsql/client": "^0.17.3",
     "@marsidev/react-turnstile": "^1.5.3",
+    "drizzle-orm": "^0.45.2",
     "next": "15.5.19",
+    "next-auth": "^5.0.0-beta.31",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

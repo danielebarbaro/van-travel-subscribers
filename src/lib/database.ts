@@ -31,14 +31,29 @@ async function initializeDatabase() {
       await turso.execute(`ALTER TABLE emails ADD COLUMN deleted_at DATETIME NULL`);
     }
 
-    const hasUnsubscribeToken = tableInfo.rows.some((row) => {
-      const rowData = row as Record<string, unknown>;
-      return rowData.name === 'unsubscribe_token';
-    });
+    const columnsInfo = await turso.execute('PRAGMA table_info(emails)');
+    const existingColumns = new Set(
+      columnsInfo.rows.map((row) => (row as Record<string, unknown>).name as string)
+    );
 
-    if (!hasUnsubscribeToken) {
-      await turso.execute(`ALTER TABLE emails ADD COLUMN unsubscribe_token TEXT`);
-    }
+    const ensureColumn = async (name: string, ddl: string) => {
+      if (!existingColumns.has(name)) {
+        await turso.execute(`ALTER TABLE emails ADD COLUMN ${ddl}`);
+        existingColumns.add(name);
+      }
+    };
+
+    await ensureColumn('sub_daily_trips', 'sub_daily_trips INTEGER NOT NULL DEFAULT 1');
+    await ensureColumn('sub_daily_itineraries', 'sub_daily_itineraries INTEGER NOT NULL DEFAULT 1');
+    await ensureColumn('sub_custom_trip', 'sub_custom_trip INTEGER NOT NULL DEFAULT 0');
+    await ensureColumn('custom_country', 'custom_country TEXT');
+    await ensureColumn('custom_direction', 'custom_direction TEXT');
+    await ensureColumn('custom_max_km', 'custom_max_km INTEGER');
+    await ensureColumn('custom_date_from', 'custom_date_from TEXT');
+    await ensureColumn('custom_date_to', 'custom_date_to TEXT');
+    // Opaque server-side token for the unsubscribe flow; intentionally NOT part of
+    // SubscriberPreferences (fetched separately), so its absence there is not a bug.
+    await ensureColumn('unsubscribe_token', 'unsubscribe_token TEXT');
 
     await turso.execute(
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_emails_unsub_token ON emails(unsubscribe_token)`
@@ -66,6 +81,17 @@ export interface EmailEntry {
   unsubscribe_token?: string | null;
 }
 
+export interface SubscriberPreferences {
+  sub_daily_trips: number;
+  sub_daily_itineraries: number;
+  sub_custom_trip: number;
+  custom_country: string | null;
+  custom_direction: string | null;
+  custom_max_km: number | null;
+  custom_date_from: string | null;
+  custom_date_to: string | null;
+}
+
 export class EmailDatabase {
   private async ensureInitialized() {
     if (!isInitialized) {
@@ -87,6 +113,19 @@ export class EmailDatabase {
       }
       throw error;
     }
+  }
+
+  // Reversible unsubscribe: turns off every channel but keeps the row active, so the
+  // subscriber can still log in and re-enable channels later (no login dead-end).
+  // Consistent with the dashboard "unsubscribe from everything".
+  async unsubscribeByToken(token: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: `UPDATE emails SET sub_daily_trips = 0, sub_daily_itineraries = 0, sub_custom_trip = 0
+            WHERE unsubscribe_token = ? AND deleted_at IS NULL`,
+      args: [token],
+    });
+    return result.rowsAffected > 0;
   }
 
   async getEmails(): Promise<EmailEntry[]> {
@@ -143,13 +182,50 @@ export class EmailDatabase {
     return result.rows.length > 0 ? (result.rows[0] as unknown as EmailEntry) : null;
   }
 
-  async unsubscribeByToken(token: string): Promise<boolean> {
+  async getPreferences(email: string): Promise<SubscriberPreferences | null> {
     await this.ensureInitialized();
     const result = await turso.execute({
-      sql: 'UPDATE emails SET deleted_at = CURRENT_TIMESTAMP WHERE unsubscribe_token = ? AND deleted_at IS NULL',
-      args: [token]
+      sql: `SELECT sub_daily_trips, sub_daily_itineraries, sub_custom_trip,
+                   custom_country, custom_direction, custom_max_km,
+                   custom_date_from, custom_date_to
+            FROM emails WHERE email = ? AND deleted_at IS NULL`,
+      args: [email],
+    });
+    return result.rows.length > 0
+      ? (result.rows[0] as unknown as SubscriberPreferences)
+      : null;
+  }
+
+  async updatePreferences(email: string, prefs: SubscriberPreferences): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: `UPDATE emails SET
+              sub_daily_trips = ?, sub_daily_itineraries = ?, sub_custom_trip = ?,
+              custom_country = ?, custom_direction = ?, custom_max_km = ?,
+              custom_date_from = ?, custom_date_to = ?
+            WHERE email = ? AND deleted_at IS NULL`,
+      args: [
+        prefs.sub_daily_trips,
+        prefs.sub_daily_itineraries,
+        prefs.sub_custom_trip,
+        prefs.custom_country,
+        prefs.custom_direction,
+        prefs.custom_max_km,
+        prefs.custom_date_from,
+        prefs.custom_date_to,
+        email,
+      ],
     });
     return result.rowsAffected > 0;
+  }
+
+  async isActiveSubscriber(email: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: 'SELECT 1 FROM emails WHERE email = ? AND deleted_at IS NULL LIMIT 1',
+      args: [email],
+    });
+    return result.rows.length > 0;
   }
 
   async getStats(): Promise<{ active: number; deleted: number; total: number }> {
