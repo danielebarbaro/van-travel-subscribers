@@ -18,10 +18,15 @@ export default async function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen max-w-lg mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Le tue preferenze</h1>
-      <p className="text-sm text-gray-500">{email}</p>
-      <PreferencesForm initial={prefs} countries={[...countries]} />
+    <main className="bs px-6 py-12 sm:py-16">
+      <div className="mx-auto w-full max-w-lg">
+        <header className="mb-8">
+          <p className="bs-label mb-2">BarbiSurfer</p>
+          <h1 className="bs-title text-4xl mb-1">Le tue preferenze</h1>
+          <p className="bs-muted text-sm">{email}</p>
+        </header>
+        <PreferencesForm initial={prefs} countries={[...countries]} />
+      </div>
     </main>
   );
 }

@@ -33,3 +33,185 @@ body {
 .font-roboto {
   font-family: var(--font-roboto), Arial, Helvetica, sans-serif;
 }
+
+/* ----------------------------------------------------------------------------
+   BarbiSurfer account surfaces (login, verify, error, dashboard).
+   Warm sunset product theme. Light, independent from the OS dark preference.
+---------------------------------------------------------------------------- */
+.bs {
+  color-scheme: light;
+  --bs-bg: oklch(0.985 0.009 75);
+  --bs-panel: oklch(0.965 0.014 72);
+  --bs-card: oklch(0.998 0.004 80);
+  --bs-border: oklch(0.9 0.016 70);
+  --bs-border-strong: oklch(0.8 0.03 62);
+  --bs-text: oklch(0.29 0.028 55);
+  --bs-muted: oklch(0.56 0.03 60);
+  --bs-accent: oklch(0.66 0.19 45);
+  --bs-accent-press: oklch(0.58 0.2 42);
+  --bs-accent-soft: oklch(0.95 0.05 62);
+  --bs-ring: oklch(0.66 0.19 45 / 0.32);
+  --bs-danger: oklch(0.56 0.18 27);
+  --bs-danger-soft: oklch(0.96 0.04 30);
+  --bs-success: oklch(0.6 0.13 150);
+  --bs-shadow: 0 1px 2px oklch(0.5 0.06 60 / 0.07), 0 10px 30px oklch(0.5 0.07 55 / 0.08);
+
+  min-height: 100svh;
+  background:
+    radial-gradient(120% 80% at 50% -10%, var(--bs-accent-soft), transparent 60%),
+    var(--bs-bg);
+  color: var(--bs-text);
+  font-family: var(--font-roboto), system-ui, sans-serif;
+}
+
+.bs-card {
+  background: var(--bs-card);
+  border: 1px solid var(--bs-border);
+  border-radius: 18px;
+  box-shadow: var(--bs-shadow);
+}
+
+.bs-title {
+  font-family: var(--font-sedgwick), cursive;
+  color: var(--bs-text);
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+}
+
+.bs-muted { color: var(--bs-muted); }
+.bs-accent { color: var(--bs-accent); }
+
+.bs-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--bs-muted);
+}
+
+/* Inputs, selects, date, number ------------------------------------------- */
+.bs-input {
+  width: 100%;
+  background: var(--bs-card);
+  color: var(--bs-text);
+  border: 1px solid var(--bs-border);
+  border-radius: 11px;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.95rem;
+  transition: border-color 160ms ease-out, box-shadow 160ms ease-out, background 160ms ease-out;
+}
+.bs-input::placeholder { color: oklch(0.7 0.02 60); }
+.bs-input:hover { border-color: var(--bs-border-strong); }
+.bs-input:focus,
+.bs-input:focus-visible {
+  outline: none;
+  border-color: var(--bs-accent);
+  box-shadow: 0 0 0 4px var(--bs-ring);
+}
+select.bs-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23a06b3e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  padding-right: 2.4rem;
+  text-transform: capitalize;
+}
+
+/* Buttons ----------------------------------------------------------------- */
+.bs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 11px;
+  padding: 0.7rem 1.15rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 150ms ease-out, border-color 150ms ease-out, transform 120ms ease-out, box-shadow 150ms ease-out, color 150ms ease-out;
+}
+.bs-btn:active { transform: translateY(1px); }
+.bs-btn:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--bs-ring); }
+.bs-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+.bs-btn-primary {
+  background: var(--bs-accent);
+  color: oklch(0.99 0.01 80);
+  box-shadow: 0 1px 2px oklch(0.5 0.1 45 / 0.25);
+}
+.bs-btn-primary:hover:not(:disabled) { background: var(--bs-accent-press); }
+
+.bs-btn-ghost {
+  background: var(--bs-card);
+  color: var(--bs-text);
+  border-color: var(--bs-border);
+}
+.bs-btn-ghost:hover:not(:disabled) { border-color: var(--bs-border-strong); background: var(--bs-panel); }
+
+/* Toggle switch ----------------------------------------------------------- */
+.bs-switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: oklch(0.86 0.012 70);
+  cursor: pointer;
+  transition: background 180ms ease-out;
+}
+.bs-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--bs-card);
+  box-shadow: 0 1px 2px oklch(0.4 0.05 60 / 0.3);
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bs-switch:checked { background: var(--bs-accent); }
+.bs-switch:checked::after { transform: translateX(18px); }
+.bs-switch:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--bs-ring); }
+
+/* Segmented control ------------------------------------------------------- */
+.bs-seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  background: var(--bs-panel);
+  border: 1px solid var(--bs-border);
+  border-radius: 12px;
+}
+.bs-seg-btn {
+  border: none;
+  background: transparent;
+  color: var(--bs-muted);
+  border-radius: 9px;
+  padding: 0.5rem 1.05rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease-out, color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.bs-seg-btn[aria-pressed="true"] {
+  background: var(--bs-card);
+  color: var(--bs-accent);
+  box-shadow: 0 1px 2px oklch(0.4 0.05 60 / 0.18);
+}
+.bs-seg-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--bs-ring); }
+
+/* Inline messages --------------------------------------------------------- */
+.bs-alert-error {
+  color: var(--bs-danger);
+  background: var(--bs-danger-soft);
+  border: 1px solid oklch(0.85 0.06 30);
+  border-radius: 11px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.88rem;
+}
+.bs-note-success { color: var(--bs-success); font-weight: 600; }
+.bs-note-error { color: var(--bs-danger); font-weight: 600; }
