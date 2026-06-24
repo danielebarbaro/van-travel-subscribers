@@ -91,9 +91,10 @@ export class EmailDatabase {
   async addEmail(email: string): Promise<void> {
     await this.ensureInitialized();
     try {
+      const token = crypto.randomUUID();
       await turso.execute({
-        sql: 'INSERT INTO emails (email) VALUES (?)',
-        args: [email]
+        sql: 'INSERT INTO emails (email, unsubscribe_token) VALUES (?, ?)',
+        args: [email, token]
       });
     } catch (error: unknown) {
       if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
@@ -101,6 +102,16 @@ export class EmailDatabase {
       }
       throw error;
     }
+  }
+
+  async unsubscribeByToken(token: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await turso.execute({
+      sql: `UPDATE emails SET sub_daily_trips = 0, sub_daily_itineraries = 0, sub_custom_trip = 0
+            WHERE unsubscribe_token = ? AND deleted_at IS NULL`,
+      args: [token],
+    });
+    return result.rowsAffected > 0;
   }
 
   async getEmails(): Promise<EmailEntry[]> {
