@@ -30,6 +30,14 @@ export function PreferencesForm({
 
   async function unsubscribeAll() {
     const res = await fetch('/api/prefs', { method: 'DELETE' });
+    if (res.ok) {
+      setPrefs((p) => ({
+        ...p,
+        sub_daily_trips: 0,
+        sub_daily_itineraries: 0,
+        sub_custom_trip: 0,
+      }));
+    }
     setStatus(res.ok ? 'Disiscritto da tutto.' : 'Errore durante la disiscrizione.');
   }
 
@@ -83,7 +91,10 @@ export function PreferencesForm({
           <div className="flex flex-col gap-1">
             <span className="text-sm">Max km (101–2999)</span>
             <input type="number" min={101} max={2999} value={prefs.custom_max_km ?? 1500}
-              onChange={(e) => set('custom_max_km', Number(e.target.value))}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                set('custom_max_km', Number.isNaN(n) ? null : n);
+              }}
               className="border rounded px-2 py-1" />
           </div>
 
