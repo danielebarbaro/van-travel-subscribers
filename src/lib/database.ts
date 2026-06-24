@@ -185,15 +185,6 @@ export class EmailDatabase {
     return result.rowsAffected > 0;
   }
 
-  async softDeleteByEmail(email: string): Promise<boolean> {
-    await this.ensureInitialized();
-    const result = await turso.execute({
-      sql: 'UPDATE emails SET deleted_at = CURRENT_TIMESTAMP WHERE email = ? AND deleted_at IS NULL',
-      args: [email],
-    });
-    return result.rowsAffected > 0;
-  }
-
   async isActiveSubscriber(email: string): Promise<boolean> {
     await this.ensureInitialized();
     const result = await turso.execute({

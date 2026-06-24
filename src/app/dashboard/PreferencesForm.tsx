@@ -29,14 +29,19 @@ export function PreferencesForm({
   }
 
   async function unsubscribeAll() {
-    const res = await fetch('/api/prefs', { method: 'DELETE' });
+    const zeroed: SubscriberPreferences = {
+      ...prefs,
+      sub_daily_trips: 0,
+      sub_daily_itineraries: 0,
+      sub_custom_trip: 0,
+    };
+    const res = await fetch('/api/prefs', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(zeroed),
+    });
     if (res.ok) {
-      setPrefs((p) => ({
-        ...p,
-        sub_daily_trips: 0,
-        sub_daily_itineraries: 0,
-        sub_custom_trip: 0,
-      }));
+      setPrefs(zeroed);
     }
     setStatus(res.ok ? 'Disiscritto da tutto.' : 'Errore durante la disiscrizione.');
   }

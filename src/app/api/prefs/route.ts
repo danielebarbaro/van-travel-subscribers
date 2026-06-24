@@ -83,14 +83,3 @@ export async function PUT(request: Request) {
 
   return Response.json({ ok: true });
 }
-
-export async function DELETE() {
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase().trim();
-  if (!email) {
-    return Response.json({ error: 'Non autenticato' }, { status: 401 });
-  }
-
-  await emailDatabase.softDeleteByEmail(email);
-  return Response.json({ ok: true });
-}
