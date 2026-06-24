@@ -138,7 +138,7 @@ export default function Home() {
       <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center px-8 lg:px-16 py-12 lg:py-24">
         <div className="max-w-lg">
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-12">
+          <div className="flex items-center justify-between gap-3 mb-12">
             <div className="w-30 h-30  flex items-center justify-center overflow-hidden">
               <Image
                 src="/images/barbisurfer.webp"
@@ -148,6 +148,9 @@ export default function Home() {
                 className="w-full h-full object-cover"
               />
             </div>
+            <a href="/login" className="text-sm underline text-gray-600">
+              Gestisci preferenze
+            </a>
           </div>
 
           {/* Main Heading */}
@@ -208,6 +211,12 @@ export default function Home() {
             {message && (
               <p className={`mt-3 text-sm font-roboto ${isSuccess ? 'text-green-600' : 'text-red-600'}`}>
                 {message}
+              </p>
+            )}
+            {isSuccess && (
+              <p className="text-sm mt-2 font-roboto text-gray-600">
+                Iscritto! Gestisci i canali dalla{' '}
+                <a href="/login" className="underline">dashboard</a>.
               </p>
             )}
              {process.env.NODE_ENV === 'development' && rateLimitInfo ? (
