@@ -115,11 +115,15 @@ export class EmailDatabase {
     }
   }
 
+  // Reversible unsubscribe: turns off every channel but keeps the row active, so the
+  // subscriber can still log in and re-enable channels later (no login dead-end).
+  // Consistent with the dashboard "unsubscribe from everything".
   async unsubscribeByToken(token: string): Promise<boolean> {
     await this.ensureInitialized();
     const result = await turso.execute({
-      sql: 'UPDATE emails SET deleted_at = CURRENT_TIMESTAMP WHERE unsubscribe_token = ? AND deleted_at IS NULL',
-      args: [token]
+      sql: `UPDATE emails SET sub_daily_trips = 0, sub_daily_itineraries = 0, sub_custom_trip = 0
+            WHERE unsubscribe_token = ? AND deleted_at IS NULL`,
+      args: [token],
     });
     return result.rowsAffected > 0;
   }
