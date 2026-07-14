@@ -5,15 +5,16 @@ import { db } from '@/db/drizzle';
 import { users, accounts, sessions, verificationTokens } from '@/db/schema';
 import { emailDatabase } from '@/lib/database';
 import { magicLinkEmail } from '@/lib/magic-link-email';
+import { authConfig } from '@/auth.config';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
     sessionsTable: sessions,
     verificationTokensTable: verificationTokens,
   }),
-  session: { strategy: 'jwt' },
   providers: [
     Resend({
       // Accept either the Auth.js default name or the backend's RESEND_API_KEY.

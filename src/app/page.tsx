@@ -53,7 +53,7 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (cooldownTime && Date.now() < cooldownTime) {
       const secondsLeft = Math.ceil((cooldownTime - Date.now()) / 1000);
       setMessage(`⏱️ Attendi ${secondsLeft} secondi prima di riprovare`);
@@ -77,17 +77,17 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           email,
-          turnstileToken: turnstileToken 
+          turnstileToken: turnstileToken
         }),
       });
 
       const data = await response.json();
-      
+
       const remaining = response.headers.get('X-RateLimit-Remaining');
       const resetTime = response.headers.get('X-RateLimit-Reset');
-      
+
       if (remaining !== null) {
         setRateLimitInfo({
           remaining: parseInt(remaining),
@@ -136,9 +136,9 @@ export default function Home() {
     <div className="min-h-screen flex">
       {/* Left Panel - Content */}
       <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center px-8 lg:px-16 py-12 lg:py-24">
-        <div className="max-w-lg">
+        <div className="max-w-2xl">
           {/* Logo */}
-          <div className="flex items-center justify-between gap-3 mb-12">
+          <div className="flex items-center gap-3 mb-12">
             <div className="w-30 h-30  flex items-center justify-center overflow-hidden">
               <Image
                 src="/images/barbisurfer.webp"
@@ -148,9 +148,6 @@ export default function Home() {
                 className="w-full h-full object-cover"
               />
             </div>
-            <a href="/login" className="text-sm underline text-gray-600">
-              Gestisci preferenze
-            </a>
           </div>
 
           {/* Main Heading */}
@@ -165,29 +162,37 @@ export default function Home() {
 
           {/* Email Form */}
           <div className="mb-8">
-            <div className="flex gap-0 border border-gray-300 rounded-lg overflow-hidden">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="nome@dominio.com"
-                className="flex-1 px-4 py-3 border-0 focus:outline-none text-base bg-white font-roboto disabled:bg-gray-50 disabled:text-gray-500"
-                disabled={Boolean(isDisabled)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSubmit(e as React.KeyboardEvent<HTMLInputElement>);
-                  }
-                }}
-              />
-              <button
-                onClick={handleSubmit}
-                disabled={Boolean(isDisabled)}
-                className="px-6 py-3 bg-black text-white font-medium hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-roboto"
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex gap-0 border border-gray-300 rounded-lg overflow-hidden flex-1">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nome@dominio.com"
+                  className="flex-1 px-4 py-3 border-0 focus:outline-none text-base bg-white font-roboto disabled:bg-gray-50 disabled:text-gray-500"
+                  disabled={Boolean(isDisabled)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSubmit(e as React.KeyboardEvent<HTMLInputElement>);
+                    }
+                  }}
+                />
+                <button
+                  onClick={handleSubmit}
+                  disabled={Boolean(isDisabled)}
+                  className="px-6 py-3 bg-black text-white font-medium hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-roboto whitespace-nowrap"
+                >
+                  {isLoading ? 'Invio...' :
+                   cooldownTime && Date.now() < cooldownTime ? `${getCooldownSeconds()}s` :
+                   'Iscriviti ora'}
+                </button>
+              </div>
+              <a
+                href="/login"
+                className="px-6 py-3 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 transition-colors duration-200 font-roboto whitespace-nowrap text-center"
               >
-                {isLoading ? 'Invio...' : 
-                 cooldownTime && Date.now() < cooldownTime ? `${getCooldownSeconds()}s` :
-                 'Iscriviti ora'}
-              </button>
+                Gestisci preferenze
+              </a>
             </div>
 
             {/* Turnstile CAPTCHA */}
